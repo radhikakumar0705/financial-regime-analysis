@@ -613,6 +613,16 @@ def main():
     out_df.to_csv("dtc_regime_assignments.csv")
     print("\n  Assignments saved → dtc_regime_assignments.csv")
 
+    # Export regime performance for Power BI
+    regime_map = assign_regime_names(stats)
+    stats_export = stats.copy()
+    stats_export['regime_name'] = [regime_map.get(k, f'R{k}') for k in stats_export.index]
+    stats_export['Ann_Return'] = stats_export['mean_ret'] * 100
+    stats_export['Ann_Vol'] = stats_export['vol'] * 100
+    stats_export['Sharpe'] = stats_export['sharpe']
+    stats_export[['regime_name', 'Ann_Return', 'Ann_Vol', 'Sharpe', 'count']].to_csv('regime_performance.csv')
+    print("Performance saved → regime_performance.csv")
+
     # ── 10. Plot ──────────────────────────────────────────────────────────────
     if not args.no_plot:
         plot_results(
