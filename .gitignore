@@ -1,0 +1,19 @@
+# Python
+__pycache__/
+*.pyc
+
+# Notebooks
+.ipynb_checkpoints/
+
+# Models
+*.pkl
+
+# Data files
+*.xlsx
+*.xls
+
+# Environment
+.env
+
+# OS
+.DS_Store
