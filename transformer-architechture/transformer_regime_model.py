@@ -224,7 +224,7 @@ def main():
     model.tft.to(device)
     optimizer = torch.optim.Adam(model.parameters(), lr=1e-3)
 
-    epochs = 50
+    epochs = 30
 
     for epoch in range(epochs):
         model.train()
@@ -282,6 +282,12 @@ def main():
         )
 
     results_df['Regime_ID'] = predicted_regimes
+    prob_cols = [f"Regime_{i}_Prob" for i in range(num_regimes)]
+    probability_df = pd.DataFrame(regime_probabilities, columns=prob_cols)
+    output_df = pd.concat(
+        [results_df[["Date", "Regime_ID"]].reset_index(drop=True), probability_df],
+        axis=1
+    )
     results_df['Confidence'] = regime_probabilities.max(axis=1)
 
     stats = results_df.groupby("Regime_ID")["Log_returns"].agg(["count", "mean", "std"])
@@ -303,6 +309,32 @@ def main():
         sideways_id: "Sideways"
     }
     results_df['Regime'] = results_df['Regime_ID'].map(dynamic_mapping)
+
+    # Build a regime performance summary table similar to the requested format.
+    regime_perf_df = (
+        results_df.groupby(["Regime_ID", "Regime"])["Log_returns"]
+        .agg(["count", "mean", "std"])
+        .reset_index()
+        .rename(columns={"Regime_ID": "regime", "Regime": "regime_name"})
+    )
+    regime_perf_df["Ann_Return"] = regime_perf_df["mean"] * 252 * 100
+    regime_perf_df["Ann_Vol"] = regime_perf_df["std"] * np.sqrt(252) * 100
+    regime_perf_df["Sharpe"] = regime_perf_df["Ann_Return"] / regime_perf_df["Ann_Vol"]
+    regime_perf_df = regime_perf_df[["regime", "regime_name", "Ann_Return", "Ann_Vol", "Sharpe", "count"]]
+
+    regime_perf_csv_path = os.path.join(script_dir, "tft_regime_performance.csv")
+    regime_perf_df.to_csv(regime_perf_csv_path, index=False)
+    print("\nTFT regime performance table:")
+    print(regime_perf_df)
+    print(f"Saved TFT regime performance to: {regime_perf_csv_path}")
+
+    output_df["Regime"] = results_df["Regime"].values
+    output_df = output_df[["Date", "Regime", "Regime_ID"] + prob_cols]
+    output_csv_path = os.path.join(script_dir, "tft_temporal_assignments.csv")
+    output_df.to_csv(output_csv_path, index=False)
+    print("Final output DataFrame:")
+    print(output_df.head())
+    print(f"Saved output_df to: {output_csv_path}")
 
     sil_score = silhouette_score(latent_space, predicted_regimes)
     print(f"1. Silhouette Score: {sil_score:.4f}")
