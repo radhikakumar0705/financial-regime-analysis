@@ -1,4 +1,4 @@
-import pandas as pd
+﻿import pandas as pd
 import numpy as np
 import pickle
 import json
@@ -7,10 +7,8 @@ from scipy.stats import skew, kurtosis
 import warnings
 warnings.filterwarnings('ignore')
 
-
 BASE_DIR = os.path.dirname(os.path.abspath(__file__))
-
-ROOT_DIR = os.path.dirname(BASE_DIR)   # project root
+ROOT_DIR = os.path.dirname(BASE_DIR)  # project root
 
 FEATURES_PATH = os.path.join(ROOT_DIR, "outputs", "hmm_features.csv")
 MODEL_PATH    = os.path.join(ROOT_DIR, "outputs", "hmm_best_model.pkl")
@@ -82,31 +80,35 @@ for s in range(N_BEST):
     regime_stats[s]['dur_mean'] = float(np.mean(d))
     regime_stats[s]['dur_max']  = int(np.max(d))
 
-# labeling
+# --- NEW LABELING LOGIC ---
 sorted_states = sorted(regime_stats.keys(), key=lambda s: regime_stats[s]['mean_return'])
-avg_vol = np.mean([regime_stats[s]['mean_vol'] for s in regime_stats])
 
-def label(rank, s):
-    vol = regime_stats[s]['mean_vol']
-    ret = regime_stats[s]['mean_return']
+def get_k4_labels(stats, sorted_by_ret):
+    labels = {}
+    
+    labels[sorted_by_ret[0]] = 'Bear'
+    labels[sorted_by_ret[3]] = 'Bull'
+    
+    mid1, mid2 = sorted_by_ret[1], sorted_by_ret[2]
+    
+    if stats[mid1]['mean_vol'] > stats[mid2]['mean_vol']:
+        labels[mid1] = 'High-Vol'
+        labels[mid2] = 'Sideways'
+    else:
+        labels[mid1] = 'Sideways'
+        labels[mid2] = 'High-Vol'
+        
+    return labels
 
-    if N_BEST == 2:
-        return 'Bear' if rank == 0 else 'Bull'
-
-    if N_BEST == 3:
-        return ['Bear','Sideways','Bull'][rank]
-
-    if rank == 0:
-        return 'High Vol Bear' if vol > avg_vol else 'Bear'
-    if rank == 1:
-        return 'Bear' if ret < 0 else 'Sideways'
-    if rank == 2:
-        return 'Sideways'
-    return 'Bull'
-
-STATE_LABELS = {s: label(i, s) for i, s in enumerate(sorted_states)}
+if N_BEST == 2:
+    STATE_LABELS = {sorted_states[0]: 'Bear', sorted_states[1]: 'Bull'}
+elif N_BEST == 3:
+    STATE_LABELS = {sorted_states[0]: 'Bear', sorted_states[1]: 'Sideways', sorted_states[2]: 'Bull'}
+else: 
+    STATE_LABELS = get_k4_labels(regime_stats, sorted_states)
 
 df['regime'] = df['state'].map(STATE_LABELS)
+# --------------------------
 
 # transition matrix
 trans = model.transmat_

@@ -1,10 +1,10 @@
 {
   "n_states": 4,
   "labels": {
-    "1": "High Vol Bear",
-    "3": "Sideways",
-    "2": "Sideways",
-    "0": "Bull"
+    "1": "Bear",
+    "0": "Bull",
+    "3": "High-Vol",
+    "2": "Sideways"
   },
   "stats": {
     "0": {
